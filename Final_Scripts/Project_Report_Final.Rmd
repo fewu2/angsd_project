@@ -1,0 +1,1410 @@
+---
+title: "Project_Report_Final"
+author: "Frank Wu"
+date: "2025-04-21"
+output: 
+  - html_document
+  - pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+After initial discussion with course staff, I was advised to choose a
+condition that would have abundant available bulk-RNA data. I was
+interested in various forms of lung cancer, because of its well known
+lethality and difficulty to treat. To limit the difficulty and scope of
+the project, I was advised to choose a type of non-small cell lung
+cancer. This is because it is a lot harder to get rigorously
+representative expression data for small-cell lung cancer. I chose lung
+adenocarcinoma (LUAD), because as of 2023, it was the most common form
+of NSCLC. This means it is both a high-impact therapeutic target, and
+likely to have more accessible data associated with it. Lung cancer as a
+whole continues to be one of the most urgent cancers to characterize,
+diagnose, and treat. Five-year survival rates remain low even in 2024,
+at around 28.4% nationally according to the American Lung Association,
+and this is after an improvement of 26% in the last five years due to
+advancements in medical technology. (American Lung Association, 2024)
+Lung cancer becomes significantly less survivable as the disease
+progresses, with survival rates falling exponentially with disease
+progression. A main aspect of how LUAD cases are described is classical
+classification into stages, I through IV. (Myers & Wallen, 2023) Cancer
+staging is based on the [primary] tumor, nodal spread, and distant
+metastases (TMN) components, which are physiological descriptions of the
+extent and severity of the tumor pathology. (González-Rivas & Fieira,
+2021) However, how LUAD cases progress from one stage to the next
+genetically remains the subject of ongoing research, because LUAD
+well-known for a high degree of patient heterogeneity in response to
+treatment. Thus, if there are expression pathways common among all LUAD
+progression trajectories, these could be invaluable targets for
+prognosis and treatment targeting. (Wu et al., 2021) With all this in
+mind, I thought it would be interesting to characterize the different
+expression profiles of stage I and stage IV LUAD. As both stages have a
+variety of subtypes, this would be a more general, high-level
+comparison. My question was, "what are the most significant ways that
+the transcriptomic profiles of stage I and stage IV differ from one
+another?". Indirectly, answering this question could help answer how
+LUAD progresses and how to proactively choose the best treatment. My
+hypothesis was, if comparing stage I and stage IV LUAD, one will be able
+to observe clearly distinct expression profiles, perhaps with genes
+relating to DNA replication and mitosis being upregulated, reflecting
+increased tumor growth. This was somewhat vague, but I lacked adequate
+background knowledge to have any more specific biological processes or
+specific pathways in mind.
+
+<br>
+
+## Results
+
+My results generally confirmed my hypothesis, as well as provided
+additional insights for future directions. Using the class exercises as
+an example, I performed exploratory data analysis (EDA), differential
+gene expression analysis (DGEA or DEA), gene set enrichment analysis
+(GSEA), and GO term enrichment analysis. Based on background knowledge,
+I was not expecting stage I and stage IV to be difficult to distinguish
+with respect to expression profiles, and this was supported by the data.
+As seen in figure 11, there were as many as 9,300 significantly
+differentiated genes discovered by DEA. This could be clearly seen in
+the scaled heatmap in figure 12, as well as the PCA plots in figure 10.
+Figure 13 identifies many genes with both large fold changes, high
+significance, or both. All could be explored further depending on the
+intention and direction of future research questions. Since my research
+question and hypothesis were very vague, the existence of significant
+genes themselves already confirmed my hypothesis. If I had a more
+specific gene or set of genes already in mind, I could use figure 13 to
+confirm whether this gene was upregulated or downregulated, and whether
+this regulation had any sort of effect on the condition. GO term
+enrichment analysis identified several over-represented gene sets which
+are differentiated between stage I and stage IV LUAD. These categories
+make sense given background knowledge of the condition. DNA replication,
+cell cycle regulation, and cell division are some pathways that are
+over-represented, and also happen to be biological processes I theorized
+would be likely to be upregulated. Interestingly to me, GSEA identified
+ribosome-related genes as highly significant in differentiating between
+the two conditions. I did not know this when I began the project, but
+this makes sense, as ribosomal processes are highly upregulated if cell
+division increases. There was also a surprising amount of enriched gene
+sets related to keratin and skin, which is surprising given the location
+of the condition. I am not entirely sure why this may be the case, and
+it could warrant a future direction of study. The remaining gene sets
+were mostly unsurprising, such as ones related to DNA repair or the
+immune system.
+
+As per the suggestion of course staff, the majority of the figures
+discussed in this section are contained in the "Methods" section
+following this one, to allow for a consolidated understanding of the
+full next generation sequencing (NGS) pipeline from start to finish. The
+relevant subsections are subsections H and I, with the referenced
+figures contained within.
+
+<br>
+
+## Methods
+
+For the sake of brevity and readability, a majority of the SLURM job
+scripts referred to in this section will not be explicitly included,
+save for a few specific lines. The scripts, fully annotated with code
+comments, can be found in the Github repository respective to this
+project. For a given figure, if code is not included in R, then that
+figure was created via MultiQC and imported. Bash code will not include
+code comments, as they exist in the full scripts. R code will include
+light commenting where relevant.
+
+#### A. Dataset Selection.
+
+Once the question and hypothesis were identified, a suitable dataset was
+located on the National Library of Medicine's Gene Expression Omnibus
+(GEO). It was required that the data was bulk RNA-seq, sourced from LUAD
+NSCLC tissue samples, and had six or more samples per condition. As a
+naive approach, any dataset with less than twelve total samples were
+excluded. Datasets focusing on mutant cell lines were also excluded.
+Beyond these strict requirements, preference were given to datasets
+associated with a published paper, under the assumption that such data
+had a higher chance of being of adequate quality and would be easier to
+find additional information about. Other additional preferences included
+datasets with human samples, and datasets updated within the last year.
+Depending on the specific keywords used, there might be other viable
+datasets on GEO which fit all these requirements and preferences.
+However, with the keywords I ended up choosing, these characteristics
+narrowed the selections down to Series GSE251840.
+
+#### B. Dataset Characteristics.
+
+Series GSE251840 is associated with a paper titled "Transcriptomics
+profiling of the non-small cell lung cancer microenvironment reveals
+dual immune cell-type behaviors" published on October 1st, 2024 by
+Hurtado et al. (2024). It consists of sixty-two samples, divided among
+four conditions- stage I, stage II, stage III, and stage IV-
+representing the progression of the condition. The samples are made up
+of lung cancer tumor tissue, which were collected as part of a
+prospective cohort from consenting patients diagnosed with NSCLC. The
+sequencing platform used was Illumina NextSeq 500, and the data was bulk
+RNA-seq. The pipeline was followed for all available samples up until
+the exploratory data analysis section. However, since it was decided to
+narrow down the research hypothesis to comparing the transcriptomes of
+stage I and stage IV respectively, only 41 of the original 62 samples
+ended up being relevant for the final analysis. For additional clarity
+in the figures, the 21 samples respective to stage II and stage III are
+left out of any figures and discussion, but most QC, alignment, and
+other steps were run for these samples as well.
+
+Of additional note was the source of the sequenced RNA. The RNA was
+extracted from tumor tissue samples in the form of formalin-fixed
+paraffin-embedded (FFPE) slides. FFPE is a form of long-term
+preservation. After extraction, the library was prepared with the KAPA
+RNA HyperPrep Kit with RiboErase (HMR) from Roche. The authors, Hurtado
+et al., state the original tissue samples came from a tumor library
+created and maintained by the CHU Biological Research Center, meaning
+that it was not collected by them personally. These aspects of the data
+are relevant to the later quality control (QC) subsections, and will
+also be touched upon when reviewing problems and limitations in the
+discussion section.
+
+#### C. Downloading the Data
+
+Since there are 62 samples associated with this dataset, it was
+necessary to utilize a loop to download all the relevant fastq files
+onto the Cayuga workspace automatically. To retrieve each sample, I
+utilized the SRA-toolkit, a Bioconda package which allows for direct
+access to International Nucleotide Sequence Database Collaboration
+(INSDC) data. This allows for the retrieval of .fastq files based on
+their Sequence Read Archive (SRA) accession codes. A .csv list of all
+accession codes associated with the samples in the series were
+downloaded from the NCBI website. (National Center for Biotechnology
+Information, 2024) After the .csv was moved to the working directory,
+the script downloadData.sh was run:
+
+```{bash, eval=FALSE}
+prefetch $SRR
+fastq-dump --split-files --gzip "$SRR/$SRR.sra"
+```
+
+As can be seen, retrieving the fastq files involves running "prefetch"
+for each accession number, and then "fastq-dump" on the resulting .sra
+file. The parameters --split-files downloads the two ends of the
+paired-end reads into separate files, so they can be analyzed separately
+if desired. My initial run of this command did not include the --gzip
+parameter, which I learned about later on. This resulted in downloading
+uncompressed fastq files, while the rest of the pipeline mostly calls
+for .fq.gz format. Thus, I further ran a simple script zip.sh to
+compress all the fastq files. After learning about the --gzip parameter,
+I modified my original script, which would eliminate the need for
+zip.sh. However, I did not see the need to re-run the download step as
+the final output would be the same. In the future, using --gzip would
+save substantial runtime.
+
+To run the alignment algorithm and other QC steps, a reference genome
+and .gtf annotation file were also needed in the working directory. As
+the relevant reference genome for my project is human, I downloaded both
+files from the GENOCODE project website using wget. Of the available
+options, GTF file chosen was "Comprehensive gene annotation", while the
+selected fasta file was "Genome sequence, primary assembly". (Frankish
+et al., 2023)
+
+#### D. Pre-Alignment QC and Trim-Galore
+
+With the data downloaded, the next step in the pipeline was to run
+pre-alignment QC to ensure that there were no issues with the raw fastq
+files. The main issues one would be looking for at this step are sample
+contamination and degradation, which if severe enough, would make a
+sample liable to be discarded. I was also checking to make sure that one
+condition was not distinguishable from the other in QC, as this would
+indicate dataset-compromising batch effects. The specific tool utilized
+was FastQC, and it is run for each individual sample. I wrote a simple
+script, runFASTQConly.sh, to loop through all samples and run FastQC for
+each, but only the command itself is shown below. The main notable
+aspect is the --extract parameter in the fastqc command, which is needed
+for the .fq.gz formatted files.
+
+```{bash, eval=FALSE}
+fastqc  --extract \
+    -o "${output_dir}/${base}" \
+    "$input_dir/${base}_1.fastq.gz" \
+    "$input_dir/${base}_2.fastq.gz"
+```
+
+FastQC generates metrics and a .html report for each individual fastq
+file. However, it is not practical or useful to interpret each report
+individually. Thus, I used the MultiQC tool to consolidate the FastQC
+outputs into a human-interpretable format. MultiQC automatically
+searches the input directory for relevant files and metadata, as well as
+categorizes them accordingly, so all one needs to specify is the input
+and output directories. This applies to later analyses like
+FeatureCounts and QoRTs as well. I used a script called runMultiQC.sh to
+store its command call, but it is relatively straightforward. After the
+consolidated report was created, I went in and filtered out all the
+reads for Stage II and Stage III, which are genotypes that are not
+relevant to the project, as mentioned before. I then grouped and
+highlighted the two conditions of interest to distinguish them on the
+plot. Stage I is highlighted in light blue, while Stage IV is
+highlighted in red. Note that as a matter of formatting, MultiQC
+automatically omits some sample labels to preserve readability.
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(cowplot)
+library(ggplot2)
+
+# Load in images
+img1 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/multiqc_plots_fastqc_only_project/fastqc_sequence_counts_plot.svg")
+img2 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/multiqc_plots_fastqc_only_project/fastqc_per_sequence_quality_scores_plot.svg")
+
+# Use ggplot2 to draw both plots as subpanels of one figure, then save
+panel <- plot_grid(img1, img2, ncol = 1)
+ggsave("f1_fastQC_only.png", panel, width = 5, height = 5)
+```
+
+![**Figure 1.** General fastQC plots shown from the top down- **1a.**
+Sequence Counts- Bar chart of the amount of reads in each sample **1b.**
+Per Sequence Quality Scores- Raw volume of reads at each quality score
+for each sample.](f1_fastQC_only.png)
+
+<br>
+
+The plots shown in figure 1 help quantify the overall quality of the
+samples. The main point of figure 1a. was to compare between conditions.
+If a particular condition unexpectedly has noticeably larger read counts
+than the other, this could indicate some sort of experimental design
+flaw and batch effects. The point of figure 1b. was to identify any
+samples compromised by a large amount of bad reads. If a given sample
+has high amount of sequences with low average Phred Scores, that sample
+would be liable to be excluded. If a particular condition has worse
+Phred scores than the other, that might compromise the dataset as a
+whole. In this case, both these plots did not highlight any glaring
+issues, and therefore I moved onto more specific plots.
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Load in images
+img1 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/multiqc_plots_fastqc_only_project/fastqc_adapter_content_plot.svg")
+img2 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/multiqc_plots_fastqc_only_project/fastqc_overrepresented_sequences_plot.svg")
+img3 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/multiqc_plots_fastqc_only_project/fastqc_per_sequence_gc_content_plot.svg")
+img4 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/multiqc_plots_fastqc_only_project/fastqc_sequence_duplication_levels_plot.svg")
+
+# Use ggplot2 to draw both plots as subpanels of one figure, then save
+panel <- plot_grid(img1, img2, img3, img4, ncol = 2)
+ggsave("f2_fastQC_only.png", panel, width = 20, height = 10)
+```
+
+![**Figure 2**. More detailed fastQC plots shown from the left to the
+right and top down- **2a.** Adapter Content- Percentage of adapter
+sequences seen at every base-pair position in the reads, with each
+sample being a line. **2b.** Overrepresented Sequences Sample Summary-
+percentage for each sample which contains one or more overrepresented
+sequences in its read. **2c.** Per Sequence GC Content- Density plot GC
+nucleotide percentages for the reads within a sample, with each sample
+being a line. **2d.** Sequence Duplication Levels- Shows how much of the
+sample (by percent) is at a given duplication
+volume.](f2_fastQC_only.png)
+
+<br>
+
+On a high level, the plots in figure 2 were used to check for various
+forms of contamination. Figure 2a is pretty straightforward, and
+indicated if any known adapters were detected in the sample reads. While
+trace amounts of adapter contamination were seen, the results from this
+plot do not indicate any significant problems. Only one sample slightly
+crosses the line beyond acceptable levels of adapters in the reads.
+Furthermore, if adapter content were high, we would be expecting a more
+parabolic-looking curve, with noticeably increased levels at both ends
+of the reads. Figure 2b is the most interesting. It indicates that
+several samples had a noticeably high percentage of over-represented
+sequences. One might initially suspect adapter contamination, but the
+MultiQC report indicates these samples were mostly
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", with some
+"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG" sequences as well.
+Both of these sequences are indicative of failed reads, and are not
+unexpected for data of this nature. Figure 2c shows the GC content
+density plots for each sample. One would ideally expect to see a
+consistent normal distribution across the dataset, and that is roughly
+what can be observed in the plot. Of note are the random spikes on the
+left end of the plot. These spikes likely correspond to the failed reads
+indicated in figure 2b, but fortunately do not correspond to only one
+condition. Finally figure 2d would is used mostly in tandem with figure
+2b. If there are random spikes unexpectedly in the plotted line(s), that
+could indicate various forms of contamination. However, this plot is
+unremarkable in that regard, which corroborates the idea that the the
+anomalies in figure 2c come from the failed reads identified in figure
+2b, and not adapter contamination.
+
+All things considered, these FastQC results did not subjectively
+indicate necessity for trimming. There are only six samples where the
+failed reads were potentially problematic, and in these samples, the
+percentage of the overrepresented sequences were mostly below five
+percent. However, as best practice, I opted to still use trim-galore in
+an attempt to remove the failed reads to improve the quality of the data
+as much as possible. An excerpt of the script runTrimFastQC.sh is below.
+The notable parameters are --paired, which is required for paired-end
+data, and --illumina, which essentially indicates which adapters might
+appear in the samples. I also used the --fastqc argument to
+automatically re-run fastqc after the trimming was complete, with
+--fastqc_args used to pass in the aforementioned --extract parameter
+when doing so. -j is an optional argument used to allocate more threads
+to run the command, speeding up runtime.
+
+```{bash, eval=FALSE}
+trim_galore --paired \
+  --fastqc \
+  --illumina \
+  -j 4 \
+  --fastqc_args "--extract --outdir=${output_dir}/${base}/fastqc_out" \
+  --output_dir "$output_dir/$base" \
+  "$input_dir/${base}_1.fastq.gz" \
+  "$input_dir/${base}_2.fastq.gz"
+```
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Load in images
+img1 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/fastqc-status-check-heatmap_1.png")
+img2 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/fastqc-status-check-heatmap.png")
+
+# Use ggplot2 to draw both plots as subpanels of one figure, then save
+panel <- plot_grid(img1, img2, ncol = 1)
+ggsave("f3_trim.png", panel, width = 5, height = 5)
+```
+
+![**Figure 3.** Overall status checks of FastQC results before and after
+triming, top down- **3a.** Status Checks Before Trimming **3b.** Status
+Checks After Triming.](f3_trim.png)
+
+<br>
+
+Comparing the FastQC quality plots before and after running trim-galore,
+there are noticeable improvements in "Per Base N Content", "Adapter
+Content", and "Mean Quality Scores" plots in the post-trim data.
+Additionally, the failed "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN" reads are
+almost entirely eliminated. To save space, instead of including all the
+individual plots from FastQC a second time for this section, I've
+included both heatmap summaries of FastQC for before and after trimming
+for easy comparison. This is what is seen in figure 3. There are clear
+improvements in the "Per Sequence GC Content" section and the
+"Overreprsented Sequences" section. Note that "Per Base Sequence
+Content" being in the red is somewhat common for RNA-seq data.
+
+#### E. Alignment Using STAR
+
+Following QC and trimming, it was appropriate to begin aligning samples.
+The two options were STAR and BWA. I chose STAR because it's more
+optimized for spliced alignments which is relevant for RNA-seq data. It
+is also more time efficient, which is important because my sample size
+is fairly large.
+
+The first step necessary to run alignments was to generate a genome
+index, which would be used in the alignments of all samples. This is
+done in makeIndex.sh, which can be found in the GitHub repository. The
+most important part of this script is the function call, which is below.
+The first parameter tells STAR the process being run, ie. generating a
+genome index. The next three input lines are the output directory,
+reference genome, and .gtf annotation file respectively. Of these, the
+latter two files were downloaded in subsection C. The parameter
+"sjdbOverhang" is required and is set to the read-length of the data
+minus one. It helps improve mapping accuracy and quantification by
+helping STAR generate splice junction sequences which match the length
+of the samples being aligned. One can easily determine read length
+directly in bash by using zcat and grep on the fastq.gz files.
+
+```{bash, eval=FALSE}
+STAR --runMode genomeGenerate \
+ --genomeDir "$index_out" \
+ --genomeFastaFiles "$assembly" \
+ --sjdbGTFfile "$gtf" \
+ --sjdbOverhang 75 \
+ --runThreadN 16
+```
+
+Once the genome index was generated, I ran STAR alignments for every
+trimmed sample. This loop is in runSTAR.sh. Again, only the function
+call in this loop is shown below. Like before, the first parameter
+defines what the process is being run, while the following two parameter
+are the input files. The second parameter is the genome index which was
+just generated, while the following is the sample being aligned. Note
+that since our data is paired end, and I chose to split the fastq files
+for each end, I needed to submit them together for the STAR alignment.
+The entry for --readFilesCommand is necessary due to the samples being
+in compressed format, while --outSAMtype defines the output file format.
+What is important besides specifying BAM format is including the flag
+SortedByCoordinate, as some later steps explicitly require sorted
+inputs.
+
+```{bash, eval=FALSE}
+STAR --runMode alignReads \
+    --genomeDir "$indir" \
+    --readFilesIn "$fwd" "$bkwd" \
+    --readFilesCommand zcat \
+    --outFileNamePrefix "$sample" \
+    --outSAMtype BAM SortedByCoordinate \
+    --runThreadN "$threads"
+```
+
+![**Figure 4.** Star Alignment Volume- This is a stacked bar chart.
+Mapping is measured by volume, not
+percentage.](/Users/franklynwu/Documents/ANGSD/star_alignment_plot.png)
+
+<br>
+
+MultiQC helpfully compiled the mapping rates printed by STAR onto
+graphic plot. As can be seen, a majority of the reads for all samples
+are uniquely mapped, which was necessary to confirm before proceeding
+with the next steps of the pipeline. If the percentage of unique mapping
+was low, then it would indicate that the genome index or the parameters
+for the STAR function calls were incorrect for the data, or that the
+data itself had some quality issue that required additional
+pre-alignment QC to understand.
+
+#### F. Using IGV to Confirm Stranding
+
+Some of the steps following alignment requires users to specify whether
+the data is strand-sensitive or not. It is important to provide the
+right inputs/parameters in this regard as this will affect the
+performance of tools like FeatureCounts. Based on the sequencing
+platform identified by the researchers, I already expected the data to
+be antisense and stranded. However, it is best practice to confirm this
+oneself, as researchers can be mistaken about the characteristics of
+their data or how it was gathered. I examined the alignment outputs for
+several samples, including SRR27318695 and SRR27318750, in IGV and
+determined that the data qualitatively was antisense. I also ran an
+RseQC function called "infer_experiment.py" on all samples. The function
+makes a guess on the standed specificity of a given sample based on the
+alignments within.
+
+![**Figure 5.** Strand Specificity Inferences By RseQC for All
+Samples](/Users/franklynwu/Documents/ANGSD/rseqc_infer_experiment_plot.png)
+
+<br>
+
+Figure 5, the output of running infer_experiment.py on all samples, is
+somewhat concerning because at least 35% of the samples do not seem to
+be antisense stranded according to RSeQC. After looking at specific gene
+regions for some samples IGV, I thought the undetermined group may come
+from the fact that for some samples, many individual reads fragments are
+gray, meaning that they're either low quality or they may map to both
+strands. Given what was already known about the sequencing platform
+based on GEO, the undetermined group may not be a major problem. The
+small minority of samples identified as sense-stranded is most alarming
+though. I am not really sure why this might be the case, especially if
+the sequencing platform used was consistent. This could be especially
+concerning if all the sense strands come from a given condition.
+However, due to being short on time, I was unable to examine this
+further and opted to proceed with read counting and post-alignment QC.
+
+#### G. Read Counting and Post-Alignment QC
+
+FeatureCounts (FC) is used to to quantify gene reads from the alignment
+output files. This is necessary for further analysis. For the purposes
+of Post-Alignment QC, the options are RSeQC or QoRTs. I chose QoRTs
+mostly because I had more experience using it. Both FC and QoRTs can be
+run simultaneously, which is why they share a subsection.
+
+The FC script is runFC.sh. The command call for this script has been
+excerpted below. The first parameter is optional and tells FC to
+allocate more threads for processing to speed up runtime. The next two
+parameters are the input annotation file and the desired output file
+prefix. The next four parameters are required and important. To begin
+with, -t tells FC which feature type to count. Often, the input for this
+parameter is exon. However, I chose gene because the samples' library
+preparation method, that being rRNA depletion, does not eliminate
+intronic reads. By extension, counting gene assignments rather than exon
+assignments drastically increases the unique assignment rate and thus
+the statistical power of downstream analyses. The next parameter tells
+FC what attribute to group by. The exact phrase needed will depend on
+the annotation file and the intention of the researcher; gene_id is
+fairly standard for the human reference genome. The next parameter has
+to do with the fact that the data is paired-end. Failing to specify -p
+can severely skew the data. I added the additional flag --countReadPairs
+so that a fragment is not double-counted if it exists in both the
+forward and reversed strands. Finally -s 2 has to do with fact the data
+is strand-sensitive. Based on subsection F, I chose the input two for
+this parameter to indicate antisense-stranded data.
+
+```{bash, eval=FALSE}
+featureCounts -T 16 -a $inGTF -o $outfile -t gene -g gene_id -p --countReadPairs -s 2 -Q 10 ${indir}/*Aligned.sortedByCoord.out.bam
+```
+
+The QoRTs script is runQorts.sh. The command call for QoRTs has also
+been excerpted below. Of the parameters, the last three are input files
+representing the alignment output file, the annotation file, and the
+desired output location, respectively. Otherwise, the only strictly
+necessary parameter is --stranded, which indicates that this data is
+stand-sensitive. --maxReadLength is highly recommended, however, so I
+passed in the known read length of my samples. This parameter is used to
+avoid any potential errors that might occur by having QoRTs infer the
+read length itself.
+
+```{bash, eval=FALSE}
+java -jar /athena/angsd/scratch/mef3005/share/envs/qorts/share/qorts-1.3.6-1/QoRTs.jar QC \
+    --stranded \
+    --numThreads 24 \
+    --maxReadLength 76 \
+    "$bam" \
+    "$inGTF" \
+    "$sample_outdir"
+```
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Load in images
+img1 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/featureCounts_assignment_plot.png")
+img2 <- ggdraw() + draw_image("/Users/franklynwu/Documents/ANGSD/qorts_alignments.png")
+
+# Use ggplot2 to subfigure images and then save them
+panel <- plot_grid(img1, img2, ncol = 1)
+ggsave("f6_FC.png", panel, width = 5, height = 5)
+```
+
+![**Figure 6.** Assignment rates from FeatureCounts and QoRTs, from the
+top down **6a.** FeatureCounts Assignment Percentages- Stacked bar plot
+showing percent of assigned reads, as well as various forms of
+unassigned reads, for each sample. **6b.** QoRTs Assignment Volumes By
+Location- plots showing raw amounts of exonic reads, UTR reads, and
+intronic reads, among others](f6_FC.png)
+
+<br>
+
+From an examination of Figure 6a above, we can identify an assignment
+rate that seems to hover around 70%. This is adequate for the purposes
+of further analysis. As a note, there if using -t exon instead of -t
+gene, the assignment rate falls to around 30% across samples. This is
+because of the high amount of intronic sequences in the sample, which
+will be touched upon later. The purpose behind including this figure is
+to do a preliminary spot-check on the FC output and make sure assignment
+rates are not unexpectedly low, as this would indicate that something
+has gone wrong earlier in the pipeline. If the assigned reads or
+intronic reads were only high for some samples, that would be
+problematic as well. However, as can be seen in both 6a and 6b, this is
+not the case. Intronic reads are high for all samples. Referring again
+to 6b, we can note that across all samples, volume of reads for exonic
+reads is still well over ten million. Since there are no identifiable
+batch effects, these numbers were still high enough to proceed with for
+DEA and other analyses while purely aligning to the exon and not the
+gene, if that was desired. Of course, this would require re-running
+runSTAR.sh At this point, I also saved the results.txt file to my local
+R environment, as later on, the output of FC will need to be read in to
+perform any expression analyses like DEA or GSEA.
+
+Following an initial examination of the FC assignment rates, more
+detailed information can be gleaned from the post-alignment QC results
+from QoRTs. By default, QoRTs generates an extensive series of plots for
+each sample, but two are generally considered the most important-
+"Mapping Location Rates" and "Gene-Body Coverage". QoRTs has a companion
+R package with helps read in its output and allows for the direct
+generation of figures on the R markdown file. I chose to have the
+figures "colored by group", meaning that they are separated based on
+condition. Note that to successfully read in the data, QoRTs requires
+the creation of a decoder. The purpose of this decoder is to help QoRTs
+assign labels and metadata to the data it's reading in. You can
+pre-create a text file to read into R as the decoder, but I felt it more
+convenient to automatically create the decoder in R.
+
+```{R, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+library("QoRTs")
+
+# Set the working directory to the location where the QoRTs data directories are stored
+setwd("/Users/franklynwu/Documents/ANGSD/project_2/qorts_out_2")
+
+# Write decoder manually. This is a list of all SRR accession numbers associated with stage I and stage IV.
+# Crucially, the data directories with the QoRTs outputs are named the same
+# Group IDs are written in manually, this is how QoRTs can tell what condition a sample belongs to
+incompleteDecoder <- data.frame(unique.ID = c("SRR27318691", "SRR27318692", "SRR27318699", "SRR27318700", "SRR27318701", "SRR27318702", "SRR27318703", "SRR27318704", "SRR27318707", "SRR27318708", "SRR27318709", "SRR27318710", "SRR27318711", "SRR27318712", "SRR27318714", "SRR27318715", "SRR27318716", "SRR27318717", "SRR27318719", "SRR27318720", "SRR27318721", "SRR27318722", "SRR27318723", "SRR27318725", "SRR27318726", "SRR27318727", "SRR27318730", "SRR27318731", "SRR27318732", "SRR27318734", "SRR27318737", "SRR27318738", "SRR27318739", "SRR27318740", "SRR27318741", "SRR27318744", "SRR27318745", "SRR27318747", "SRR27318748", "SRR27318749", "SRR27318750")
+,
+group.ID = c("Stage I", "Stage IV", "Stage IV", "Stage IV", "Stage IV", "Stage IV", "Stage I", "Stage I", "Stage IV", "Stage IV", "Stage I", "Stage IV", "Stage IV", "Stage I", "Stage IV", "Stage IV", "Stage IV", "Stage IV", "Stage I", "Stage IV", "Stage IV", "Stage IV", "Stage I", "Stage IV", "Stage IV", "Stage I", "Stage I", "Stage IV", "Stage I", "Stage I", "Stage I", "Stage I", "Stage I", "Stage IV", "Stage I", "Stage I", "Stage I", "Stage I", "Stage I", "Stage I", "Stage I"))
+decoder<-completeAndCheckDecoder(incompleteDecoder);
+
+# Use the QoRTs library to read in the results
+res <- read.qc.results.data(infile.dir = "", decoder = decoder, autodetectMissingSamples = TRUE)
+
+# Reset the working directory
+setwd("/Users/franklynwu/Documents/ANGSD/project_2")
+
+# Create plotter object
+byGroup.plotter <- build.plotter.colorByGroup(res);
+
+# Make mapping location plot with legend
+makePlot.gene.assignment.rates(byGroup.plotter);
+makePlot.legend.over("topright",byGroup.plotter)
+```
+
+<br>
+
+**Figure 7.** Read Mapping Location Rates Colored by Group- Mapping
+location densities binned into various categories and separated by Stage
+I and Stage IV are shown.
+
+<br>
+
+Figure 7 above shows the read mapping location types for all assignments
+in the alignment file, separated by condition. Something I checked for
+immediately that there was no obvious and significance difference
+between the conditions. While in the context of this project, some
+variation in read distribution might be expected between conditions, a
+large difference would potentially indicate some form of experimental or
+technical error. Note that the "Unique Gene" and "No Gene" bins are
+cumulative, with the former including all the entries in "Unique Gene
+UTR" and the latter including all the other "No Gene" categories. What
+was immediately of most interest was the "No Gene Intronic" section. In
+a library prepared with poly(A) enrichment methods, one would expect a
+properly prepared and aligned sample to have a relatively low level of
+"No Gene Intronic" reads. Thus, this was a major concern for me upon
+originally viewing the QoRTs output. However, upon doing further
+research into the library preparation method utilized by the original
+researchers who prepared the samples, I found out that said method only
+includes rRNA depletion and not poly(A) enrichment for mature mRNA. As a
+result, the high level of "No Gene Intronic" reads would not be
+unexpected for this dataset, and it does not indicate any technical
+error with the pipeline or QC issue with the samples. The rest of the
+"No Gene" bins are as expected, which was relatively low. These sections
+would correspond to the presence of intergenic reads. The "Ambig Gene"
+being high would potentially indicate gDNA contamination, but it was
+also relatively low. The "Unique Gene UTR" bin seems to contain about
+18% of reads for both conditions, which is not an unexpectedly high
+amount for full-transcriptome RNA sequencing.
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Make gene-body plot with legend. Code for second plot will be hidden to not break up images
+makePlot.genebody(byGroup.plotter);
+makePlot.legend.over("topright",byGroup.plotter)
+```
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Make gene-body plot but specify third quartile using geneset parameter. Code for second plot will be hidden to not break up images
+makePlot.genebody(byGroup.plotter, geneset="50-75");
+makePlot.legend.over("topright",byGroup.plotter)
+```
+
+<br>
+
+**Figure 8.** Gene-Body Coverage By Group- from the top down. **8a.**
+Total Gene-Body Coverage by Group. **8b.** Gene-Body Coverage for Upper
+Middle Quartile By Group
+
+<br>
+
+For Gene-Body Coverage, I generated two plots, one for all genes, and
+then one for genes in the middle-quartile of expression-level. The
+latter is recommended by the QoRTs manual because high-expression and
+low-expression genes can skew the plot for different reasons, so it's
+common for many researchers to refer to the latter subpanel. In an idea
+scenario, we would have a uniform distribution for the gene body
+coverage, meaning the generated plots would be nearly a straight line.
+This is practically impossible in reality. Thus, what we want to look
+for instead is 3’ bias and uniformity across samples. The 3' bias in
+both samples is not especially pronounced, which is a good sign that the
+sample quality is relatively high and not heavily degraded. What is also
+important is to ensure that degradation levels are not more pronounced
+as a whole for a particular condition vs. the other. For this dataset,
+again, there does not seem to be any unexpected or noticeable
+discrepancy between Stage I and Stage IV groups.
+
+#### H. Exploratory Data Analysis
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(DESeq2)
+library(tidyverse)
+library(magrittr)
+
+setwd("/Users/franklynwu/Documents/ANGSD/project_2")
+
+# Read in FeatureCounts outputs
+counts <- read.table("/Users/franklynwu/Documents/ANGSD/project_2/v4AllCountsRNA.txt", header=TRUE, row.names=1)
+
+# Modify names to be just the SRR accession numbers, not the full filenames, using gsub
+colnames(counts) <- gsub("align_out_star\\.|Aligned\\.sortedByCoord\\.out\\.bam", "", colnames(counts))
+# Remove metadata columns
+gene_sample <- counts[ , -c(1:5)]
+
+# Write in conditions for all samples into the df column metadata
+df_coldata <- data.frame(condition = c("Stage III", "Stage III", "Stage I", "Stage IV", "Stage II", "Stage II", "Stage II", "Stage II", "Stage III", 
+"Stage II", "Stage IV", "Stage IV", "Stage IV", "Stage IV", "Stage I", "Stage I", "Stage II", "Stage III", 
+"Stage IV", "Stage IV", "Stage I", "Stage IV", "Stage IV", "Stage I", "Stage III", "Stage IV", "Stage IV", 
+"Stage IV", "Stage IV", "Stage III", "Stage I", "Stage IV", "Stage IV", "Stage IV", "Stage I", "Stage II", 
+"Stage IV", "Stage IV", "Stage I", "Stage III", "Stage III", "Stage I", "Stage IV", "Stage I", "Stage II", 
+"Stage I", "Stage III", "Stage II", "Stage I", "Stage I", "Stage I", "Stage IV", "Stage I", "Stage III", 
+"Stage II", "Stage I", "Stage I", "Stage III", "Stage I", "Stage I", "Stage I", "Stage I"),
+                         row.names = colnames(gene_sample) )
+
+# Create DESeq2 object using metadata and gene counts
+dds_LUAD <- DESeqDataSetFromMatrix(countData = gene_sample,
+                            colData = df_coldata,
+                            design = ~ condition)
+
+# Remove genes with no expression
+keep_genes <- rowSums(counts(dds_LUAD)) > 0
+dds_LUAD <- dds_LUAD[ keep_genes, ]
+
+# Add condition to the sample names themselves for figure readability later on
+colnames(dds_LUAD) <- paste0(colnames(dds_LUAD), "_", dds_LUAD$condition)
+
+# Create a copy for later use before filtering out stage II and stage III samples
+dds_LUAD_all <- dds_LUAD
+
+# Remove stage II samples and stage III samples
+dds_LUAD <- dds_LUAD[, !(dds_LUAD$condition %in% c("Stage II", "Stage III"))]
+
+# Remove the stage II and stage III conditions to prevent matrix rank issues 
+dds_LUAD$condition <- droplevels(dds_LUAD$condition)
+
+# Re-level based on stage I as the "baseline"
+dds_LUAD$condition %<>% relevel(ref="Stage I")
+dds_LUAD
+
+# Apply variance stabilizing transformation to both dataframes. These are meant for EDA.
+vs_dds_LUAD <- varianceStabilizingTransformation(dds_LUAD, blind = TRUE)
+vs_dds_LUAD_all <- varianceStabilizingTransformation(dds_LUAD_all, blind = TRUE)
+```
+
+The first step was to load the FC counts into a DESeq2 object for
+normalization and further analysis. I modified the sample column names
+for brevity, removed the metadata columns, and manually read in the
+condition assignments. I then also filtered out all Stage II and Stage
+III related columns, as well as removing the conditions themselves. If
+the conditions are not removed, this will lead to matrix rank issues
+later on in differential expression analysis (DEA). I also appended the
+conditions to the sample names to vastly increase interpretability for
+later figures. Information about the final DESeq2 object is printed
+above. As can be seen, we have 41 columns corresponding to our 41
+samples (for Stage I and Stage IV), which is expected. There are 59349
+genes with at least one read in any of the samples, out of 78724 genes
+that are present in the original annotation file. Later on, in GO term
+enrichment, our universe will be the former set. I then also did a
+variance-stabilizing transformation (VST) on all the read counts. VST is
+typically better for clustering and exploratory data analysis, but later
+down the line, I applied normalization instead where it is more
+appropriate. With the transformation applied, the data was ready for
+exploratory data analysis.
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=10, fig.width=12}
+library(pheatmap)
+
+# Extract matrix of expression values 
+vsd_data <- assay(vs_dds_LUAD)
+conditions <- vs_dds_LUAD$condition
+# print(conditions)
+# Use cor() to calculate correlation coefficients for each pair of samples, specifying pearson correlation coefficient
+corr_coeff <- cor(vsd_data, method ="pearson")
+# Transform matrix of correlation coefficients into a distance matrix
+as.dist(1-corr_coeff, upper=TRUE) %>%
+as.matrix %>%
+# Create heatmap, hide vertical dendrogram, make size modifications for legibility
+pheatmap::pheatmap(main="Pearson correlation",
+    treeheight_row=0,    
+    cellheight = 12) 
+```
+
+<br>
+
+**Figure 9.** Pearson Correlation Heatmap
+
+<br>
+
+To generate the generate the heatmap in figure 9, I followed the
+standard code utilized in class. The metric being compared between
+samples here is the VST read counts, which is represented by pearson
+correlation coefficient. A qualitative analysis of the heatmap shows
+four defined clusters. One cluster is clearly stage I and another
+cluster is clearly stage IV, but the other two seem mixed. The reason
+for two separate "mixed" groups to exist is highly interesting. If it
+were one, it might be that this group marks borderline cases, but
+clearly there is some major overlap between the stage I and stage IV
+conditions. If assumes that LUAD follows a consistent continuous
+progression, this would be highly unusual. Thus, the dendrogram
+indicated some heterogeneity between LUAD progression, at least when
+quantified by pearson correlation coefficient. This outcome indicated
+that as a whole, these conditions, perhaps do the high amount of
+features and high level of heterogeneity in LUAD, may not be easily
+distinguished based on their expression profiles.
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# Plot PCA of VST expression data
+plotPCA(vs_dds_LUAD) +
+labs(color=NULL) +
+ggtitle("PCA of Variance Stabilized Data, Stage I vs Stage IV") +
+theme_bw()
+
+# Use prcomp to carry out PCA on transposed VST expression data
+pca_result <- prcomp(t(vsd_data)) 
+# Write results to dataframe, and define groups based on condition, ie stages
+pca_df <- data.frame(PC1 = pca_result$x[, 1], 
+                     PC2 = pca_result$x[, 2], 
+                     condition = vs_dds_LUAD$condition)
+# Use ggplot to manually plot PCA dataframe
+ggplot(pca_df, aes(x = PC1, y = PC2, color = condition)) +
+  geom_point() +
+  labs(title = "PCA of Variance Stabilized Data, Stage I vs Stage IV", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+# Plot PCA of VST expression data again, but this time use previously-saved dataset containing all stages
+plotPCA(vs_dds_LUAD_all) +
+labs(color=NULL) +
+ggtitle("PCA of Variance Stabilized Data, All Stages") +
+theme_bw()
+```
+
+<br>
+
+**Figure 10.** PCA Plots Via Different Methods- from the top down.
+**10a.** PCAPlot() output. **10b.** Manually created plot of prcomp()
+PCA output. **10c.** PCAPlot() output including Stage II and Stage III
+samples.
+
+<br>
+
+I generated the PCA plot in two separate ways. The first, seen in figure
+10a, was to use the plotPCA function provided by DSEq2, which is
+relatively straightforward. In the second, figure 10b, I first conducted
+PCA using the prcomp() function which is in-built into the base R
+package. I then manually plotted the output from those functions. The
+results of the plots are slightly different. The reason for this isn't
+entirely clear to me, as the PCA method itself should be the same for
+both. I assume that plotPCA() applies certain transformations that
+differ from the ones I did manually. For instance, I opted not to
+normalize and to only use VST for PCA, while plotPCA() might
+automatically do both, or only normalization. I also applied a transpose
+for the manual PCA which seems to have not been done with the plotPCA()
+output. Regardless, both plots show that the dataset is actually
+relatively separable over the PCA vectors with respect to Stage I vs
+Stage IV. With the exception of a couple outliers, one can draw a
+straight line through both plots to separate a majority of both
+conditions into two respective groups. As an additional note, I also did
+PCA for all four conditions, one of which can be seen in figure 10c.
+This PCA plot is highly inseparable across all four conditions, with a
+high degree of overlap between all groups. This indicates that the
+overall progression of LUAD is heterogeneous and complex, bringing into
+question the significance of comparing only Stage I and Stage IV.
+
+#### I. Differential Gene Expression Analysis
+
+The final step in the methodology was to perform DGEA to obtain results
+to make inferences upon. In the code, the first line applies the DESeq()
+function to the dds_LUAD object and writes it back into dds_LUAD. The
+main important call afterwards is results(), which is a DESeq2 function
+which applies the statistical tests that ultimately produce fold change
+and significance values. Note that for results(), I used the
+untransformed DSeq2 object, because DSEq2() automatically applied
+necessary transformations for the output during this step.
+
+```{R, eval=TRUE, message=FALSE, warning=FALSE}
+# Apply DESeq() to un-normalized, un-transformed dataset
+# This automatically estimates size factors, dispersions, and fits bionmial GLM to each gene, while computing wald stat
+dds_LUAD %<>% DESeq()
+# Apply results() function to conduct DGEA, set significance threshold
+df_results <- results(dds_LUAD, independentFiltering = TRUE, alpha = 0.05)
+# Print amount of significant vs insignificant genes (TRUE is significant)
+table(df_results$padj < 0.05)
+# Write histogram of adjusted p-values
+df_results$padj %>%
+  hist(breaks=19, main="Adjusted p-values for Stage I vs Stage IV")
+```
+
+<br>
+
+**Figure 11.** Histogram of Adjusted p-values for All Four LUAD Stages.
+
+<br>
+
+The histogram above in figure 11 shows the adjusted p values for all
+genes in the system. Adjusted p-values are needed instead of raw
+p-values to control the false discovery rate in the cases large-scale
+data analysis like this one, with many thousands of hypothesis tests
+performed at once over all the various genes with read values. What one
+would look for in this chat is a sizable amount of density on the left
+end of the plot. This indicates the genes which fall under the threshold
+for significance, in this case, p \< 0.05. If the plot was skewed to the
+right end, then the conditions being compared may not be suitable to
+perform DGEA over.
+
+```{R, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=10, fig.width=10}
+# Sort results based on significance
+df_results_sorted <- df_results %>% `[`(order(.$padj),)
+# Filter out insignificant genes
+genes_dge <- rownames(subset(df_results_sorted, padj < 0.05))
+# Normalize base on size factors using rlog()
+rld_LUAD <- rlog(dds_LUAD, blind = FALSE)
+# Apply assay to DGEA results
+norm_dge <- rld_LUAD[genes_dge,] %>% assay
+# Plot heatmap of the assay, hide vertical dendrogram
+pheatmap(norm_dge, scale="row",
+        show_rownames=FALSE, treeheight_row=0, main="DGE (Row-Based Z-Score)")
+```
+
+<br> **Figure 12.** Heatmap of Scaled (by Z-Score) Counts for Genes
+Across Samples. <br>
+
+To get a better idea of the high-level differential expression results,
+I generated a scaled heatmap of the gene counts over all the samples.
+This can be seen in figure 12. I first filtered only for significant
+genes based on the 0.05 adjusted p-value cutoff, and then sorted the
+genes based on expression, which is necessary for interpretability. Then
+I normalized the expression levels, and applied row-wise z-score scaling
+for the final plot. I felt the scaled results would be more meaningful
+than the raw ones because some genes are naturally expressed at a far
+lower magnitude than others. I removed the gene-based dendrogram on the
+y-axis because at the amount of genes present, it is not
+human-interpretable and merely adds visual noise to the figure. As can
+be seen, an expression-based heatmap groups the conditions cleanly
+together, far better than pearson correlation coefficient does. Although
+faint, there is a clear "four-square" pattern where there are genes that
+are upregulated for stage I but downregulated for stage IV on the top,
+and vice versa on the bottom. There is one interesting Stage IV outlier,
+but other than that the two conditions are very easily separated by
+DSEq2.
+
+```{R, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=8, fig.width=6}
+library(EnhancedVolcano)
+library(apeglm)
+library(org.Hs.eg.db)
+
+# Apply LCF shrink transform to data
+df_results_shrunk <- lfcShrink(dds_LUAD,
+                               coef=2, # see below for explanation
+                               type="apeglm") # see Zhu et al. (2018)
+# Modify ENSEMBL gene IDs to exclude version number
+gene_ids <- gsub("\\.\\d+$", "", rownames(df_results_shrunk))
+# Map gene symbols to ENSEMBL gene IDs and replace gene IDs that match
+gene_symbols <- mapIds(org.Hs.eg.db,
+                       keys = gene_ids,
+                       column = "SYMBOL",
+                       keytype = "ENSEMBL",
+                       multiVals = "first")
+# Read back in original ENSEMBL gene IDs for genes which did not have gene symbols, as they will have been written MA
+gene_symbols[is.na(gene_symbols)] <- gene_ids[is.na(gene_symbols)]
+# Read new names into the rows of the shunrken dataset
+rownames(df_results_shrunk) <- gene_symbols
+# Plot MA plot, this is currently commented out to save space
+# MA2 <- plotMA(df_results_shrunk, alpha=0.05,
+#       main="MA-Plot of Log2 Fold Change of All Genes", ylim=c(-4,4))
+# Plot volcano plot of the shrunken dataset, with a significance cutoff
+VP <- EnhancedVolcano(df_results_shrunk,
+                        lab=rownames(df_results_shrunk),
+                        x='log2FoldChange', y='padj',
+                        pCutoff=0.05,
+                        title="Volcano Plot Stage I LUAD vs. Stage IV")
+VP
+```
+
+<br> **Figure 13.** Volcano Plot of Genes in Terms of Significance
+(-Log(Adjusted-P Values)) over Log_2-Fold Change. <br>
+
+I also generated a volcano plot using the output of the previous
+results() call, which can be seen in figure 15. The y-axis of this plot
+is the negative log_10 of the adjusted p values, meaning that the higher
+the y-axis value, the more significant. The x-axis is log_2 fold change,
+meaning that left-side genes are downregulated while right-side genes
+are upregulated. As recommended, I applies lfcShrink() to the data,
+which drastically reduces the Log_2-fold change values of genes for
+which significance, either due to low expression levels or weak signals,
+is in question. I then used the annotation package org.Hs.eg.db to
+replace the Ensembl IDs with "gene symbols", ie. colloquial gene names.
+This improves interpretability for the figures. An important note is
+that my original ENSEMBL gene IDs were formatted with a version number;
+one example is ENSG00000177352.10. However, including this version
+number means that the gene ID will not be able to map onto the gene IDs
+organism database. The version number and decimal must be removed for
+all gene IDs, which I did with gsub. Also of note is the fact that my
+gene IDs were in ENSEMBL format and not ORF like in the template code.
+However, not all IDs seemingly had respective gene symbols in the
+organism database, so I left these names as is by writing them back into
+my list of updated gene designations for any term that was NA. As a
+result, in the volcano plot, some genes are identified like
+"ENSG00000210127" and "ENSG00000248551", while others are "RGS1" and
+"UPK1B". In the EnhancedVolcano() call itself, the main important
+parameter was pCutoff = 0.05. This reduces the noise in the figure
+significantly by only including significant genes. From this plot, it's
+especially interesting to me that some of the highly significant genes
+are uncharacterized.
+
+```{R, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=6, fig.width=10}
+library(clusterProfiler)
+library(enrichplot)
+library(DOSE)
+library(gridExtra)
+
+# Get a list of differentially-expressed genes 
+gene_list <- df_results$log2FoldChange
+names(gene_list) <- rownames(df_results)
+# Modify names like before, to be able to be identified using the organism database
+names(gene_list) <- gsub("\\.\\d+$", "", names(gene_list))
+# Sort gene list
+gene_list <- sort(gene_list, decreasing = TRUE)
+# Remove insignificant genes
+df_genes <- subset(df_results, padj < 0.05)
+# Order genes by significance 
+df_genes <- df_genes[order(df_genes$padj), ]
+# Set correct organism databse object
+organism <- org.Hs.eg.db
+# Conduct GSEA to get enriched gene sets
+gse <- gseGO(geneList=gene_list,
+             ont ="ALL",
+             keyType = "ENSEMBL",
+             minGSSize = 10,
+             maxGSSize = 800,
+             pvalueCutoff = 0.05,
+             verbose = TRUE,
+             OrgDb = organism,
+             pAdjustMethod = "BH")
+# Create a dotplot of GSE results
+# Code for the next plot is identical except for ont parameter but hidden to maintain figure continuity.
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("GSE Dotplot, All Ontologies")
+```
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=6, fig.width=10}
+gse <- gseGO(geneList=gene_list,
+             ont ="BP",
+             keyType = "ENSEMBL",
+             minGSSize = 10,
+             maxGSSize = 800,
+             pvalueCutoff = 0.05,
+             verbose = TRUE,
+             OrgDb = organism,
+             pAdjustMethod = "BH")
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle("GSE Dotplot, Biological Processes Only")
+```
+
+<br> **Figure 14.** GSEA of Stage I vs Stage IV LUAD- from the top down.
+**14a.** GSE of All Ontologies. **14b.** GSE of Solely Biological
+Process Ontologies. <br>
+
+I followed the DGE analysis with a gene-set enrichment anlaysis (GSEA).
+GSEA is useful for gaining a higher-level and more intuitively
+biological perspective of the results of the DGE analysis, especially
+for cases like mine where I did not have the background knowledge to be
+interested in any particular genes or subset of genes. What it
+essentially does is group genes together based on established biological
+information about their function and behavior, and performs statistical
+tests on those sets, rather than individual genes. Like with previous
+tests, I filtered out all genes which didn't meet the 0.05 significance
+threshold before proceeding. gseGO also requires that you sort the input
+by significance, which I did as well. For GSEA and GO term enrichment
+analysis below, it is highly important that the version, ie. ".10" in
+"ENSG00000177352.10", be removed from the gene IDs, as these analyses
+explicitly require the GO database to function. I also changed my
+minimum gene-set size retroactively to be consistent with the changes I
+made in the GO term enrichment analysis. In the plot itself, the
+upregulation of skin-related gene-sets being significant surprised me,
+as LUAD takes place in lung tissue. However, most gene sets made sense
+given my limited understanding of cancer, including DNA repair, nuclear
+division, and leukocyte-mediated immunity. I generated two figures, one
+which included all ontologies, figure 14a, and one which focused only on
+biological processes, 14b.
+
+```{R, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+# Conduct GO-term enrichment analysis. Note that both the gene list and the universe list have to have their names modified to map onto organism database
+# minGSSize is set to default 10 instead of 3 in class code
+# pvalueCutoff is increased to slightly increase the amount of gene sets
+res_go <- enrichGO(gene=gsub("\\.\\d+$", "", rownames(df_genes)),
+                   universe=gsub("\\.\\d+$", "", names(gene_list)),
+                   ont="ALL",
+                   keyType="ENSEMBL",
+                   minGSSize = 10,
+                   maxGSSize = 800,
+                   pvalueCutoff = 0.1,
+                   OrgDb = organism,
+                   pAdjustMethod = "BH")
+# If statement is to make it easier to experiment with modifying the parameters of enrichGO, as many parameters will result in no GO terms
+if (!is.null(res_go) && nrow(res_go@result) > 0) {
+  # Write results to a list of GO terms and significances, to be read in by REVIGO browser-tool
+  write.table(res_go@result[, c("ID", "pvalue")],
+              file="enrichGO_project.txt", sep="\t",
+              quote=FALSE, row.names=FALSE)
+} else {
+  print("No enriched GO terms found. Check gene input and cutoffs.")
+}
+# The REVIGO tree code is not my code so it is uncommented. 
+```
+
+```{R, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+# A treemap R script produced by the Revigo server at http://revigo.irb.hr/
+# If you found Revigo useful in your work, please cite the following reference:
+# Supek F et al. "REVIGO summarizes and visualizes long lists of Gene Ontology
+# terms" PLoS ONE 2011. doi:10.1371/journal.pone.0021800
+
+# author: Anton Kratz <anton.kratz@gmail.com>, RIKEN Omics Science Center, Functional Genomics Technology Team, Japan
+# created: Fri, Nov 02, 2012  7:25:52 PM
+# last change: Fri, Nov 09, 2012  3:20:01 PM
+
+# -----------------------------------------------------------------------------
+# If you don't have the treemap package installed, uncomment the following line:
+# install.packages( "treemap" );
+library(treemap) 								# treemap package by Martijn Tennekes
+
+# Set the working directory if necessary
+# setwd("C:/Users/username/workingdir");
+
+# --------------------------------------------------------------------------
+# Here is your data from Revigo. Scroll down for plot configuration options.
+
+revigo.names <- c("term_ID","description","frequency","value","uniqueness","dispensability","representative");
+revigo.data <- rbind(c("GO:0006260","DNA replication",1.4421509940592292,6.606972984183682,0.8081469281313791,0,"DNA replication"),
+c("GO:0006261","DNA-templated DNA replication",0.8777086143070274,5.656931704521385,0.7702959895461685,0.60756425,"DNA replication"),
+c("GO:0010564","regulation of cell cycle process",0.6468238627774074,4.5828220797965376,0.8638798067289483,-0,"regulation of cell cycle process"),
+c("GO:0051276","chromosome organization",1.530548023678806,5.355838364633385,0.5970161570472665,0.01677128,"chromosome organization"),
+c("GO:0051301","cell division",1.377833380287743,5.20649829656748,0.9808345301754541,0.01766584,"cell division"),
+c("GO:1903047","mitotic cell cycle process",0.8772532640124455,5.959931924236346,0.4949357553657194,-0,"mitotic cell cycle process"));
+
+stuff <- data.frame(revigo.data);
+names(stuff) <- revigo.names;
+
+stuff$value <- as.numeric( as.character(stuff$value) );
+stuff$frequency <- as.numeric( as.character(stuff$frequency) );
+stuff$uniqueness <- as.numeric( as.character(stuff$uniqueness) );
+stuff$dispensability <- as.numeric( as.character(stuff$dispensability) );
+
+# check the tmPlot command documentation for all possible parameters - there are a lot more
+treemap(
+  stuff,
+  index = c("description"),
+  vSize = "value",
+  type = "categorical",
+  vColor = "representative",
+  title = "Revigo TreeMap",
+  inflate.labels =FALSE,      # set this to TRUE for space-filling group labels - good for posters
+  lowerbound.cex.labels = 0,   # try to draw as many labels as possible (still, some small squares may not get a label)
+  bg.labels = NA,   # define background color of group labels
+								 # "#CCCCCC00" is fully transparent, "#CCCCCCAA" is semi-transparent grey, NA is opaque
+  position.legend = "none"
+)
+```
+
+<br> **Figure 15.** GO Term Enrichment Tree Map from REVIGO <br>
+
+I also did a GO term enrichment analysis as a final form of analysis for
+my results. This approach is different from GSEA by focusing on the
+genes which were already identified in the DE analysis earlier on. What
+this does is choose which GO terms are over-represented in the DEG
+profile outputted by DESeq2, based on a few user-defined parameters.
+Compared to GSEA, GO term enrichment focuses on the most significant
+processes represented in the differential expression profile. This can
+be seen by the relatively few GO terms I have. My DEG set was 9,344
+genes long, of a universe of 51,836 genes, and goEnrich() only returned
+18 enriched GO terms. Since the point of GO term enrichment is
+identifying over-representation, a larger DEG set or universe doesn't
+necessarily mean one would expect more enriched GO terms. Still, this
+might be a surprisingly small amount from my limited understanding,
+given how complex of a condition LUAD is. On the other hand, it would
+make sense for GO term enrichment to only return the most important
+biological processes for the differentiation between stage I and stage
+IV, for which the results absolutely make sense. Mitotic cell cycle
+process, cell division, DNA replication, and etc. all would naturally
+play a massive and direct role in how LUAD progresses. Like with GSEA,
+enrichGO() requires usage of the organism database, which means I had to
+modify all my gene IDs to exclude the version from the ENSEMBL ID. For
+the function call itself, I made several changes from the template code.
+To begin with, I had to increase the significance cutoff from 0.05 to
+0.1, making it less stringent. I also increased the minimum gene set
+size from three to the default of ten. I did this because under the
+original minimum, there was only one GO term at the significance cutoff
+of p = 0.1. Increasing this parameter selects for broader GO terms with
+more genes involved, rather than highly specific processes which would
+be more selective about which genes are relevant. Because GO term
+enrichment is about over-representation, eliminating the smaller gene
+sets can increase the amount of enriched GO terms by reducing the noise
+of the DEG set and as well the correction pressure which arises from the
+high amount of statistical tests performed for each GO term. A good way
+to visualize all the GO terms together is using a tree map, which can be
+generated via REVIGO. REVIGO is a browser-based program and takes a list
+of GO term outputs from enrichGO() and their respective p-values. The
+script for the output can be downloaded, and the result of which is
+figure 15. I modified this figure by removing group-level labels,
+because there are not that many GO-terms, so they end up being
+extraneous and a distraction. In the map, the size corresponds to the
+negative log of the p-value, so larger size means more significance.
+
+#### J. Dataset Glossary
+
+<br>
+
+| Dataset Name | File Format(s) | Description/Purpose |
+|---------------|---------------|-------------------------------------------|
+| HS_index | .txt and .tab files | Genome index generated by STAR, used for alignments and generated using .GTF annotation |
+| multiqc_data | .txt and .json files | Automatically generated by MultiQC and consolidated onto .html report |
+| multiqc_notrim_out | .txt, .json, and .html | Second directory for MultiQC, to separate the FastQC results from before trim |
+| qorts_out_2 | Various formats | Automatically generated output of QoRTs, run on align_out_star |
+| align_out_star | Log and .bam files | Alignment outputs generated by STAR script |
+| RawFastqZipped | .fastq.gz and .sra files | Unprocessed read files downloaded from SRA |
+| trim_out | .fq.gz and .txt files | Trimmed fastq files, compressed. FastQC reports from post-trimming are also present |
+| v4AllCountsRNA.txt | .txt file | Output of FeatureCounts, read into R for DSEA and other analyses |
+
+<br>
+
+## Discussion
+
+Overall, I felt that the dataset I chose was fairly high quality,
+meaning that as a whole there were little problems to overcome. For
+instance, the raw data didn't really necessitate the use of trim-galore,
+although I went and did it anyway with the idea that it could only help.
+For all the QC plots I examined, there was no distinguishable difference
+between the conditions, which is ideal and means that technical batch
+effects are unlikely. I was especially impressed with the gene-body
+coverage plot, which to me represented a fairly low level of RNA
+degradation.
+
+However, there was one major hiccup with my results, which I touch upon
+a bit in the analysis figure 7. This is the high level of intronic reads
+in all the samples. These intronic reads meant that my assignment rates
+for featureCounts on the exon level were relatively low compared to the
+total sample sizes, around 30% for most. However, my raw volumes for
+exonic reads were still high enough to proceed with the analysis if
+desired. Upon doing some research, I came to the conclusion that the
+library preparation kid used by the researchers who collected the
+samples did not include poly(A) enrichment, and only rRNA depletion.
+(Roche Sequencing Solutions, n.d.) As a result, I came to the conclusion
+that the library preparation is likely the main the reason why intronic
+reads are so prevalent. Since this is an expected result of the library
+preparation, the intronic read volume should not present a significant
+problem as they will be consistent across samples. If desired, one can
+simply exclude them by counting exons only when running FC. I chose to
+leave them in by counting on the gene-level to include as much data as
+possible. However, this might have been a bad approach depending on
+context, as this means that splicing can result in the over-estimation
+or under-estimation of significance for certain genes. In general, not
+doing poly(A) enrichment might be a severe problem. This is because not
+all pre-mRNA eventually becomes mature mRNA, and pre-mRNA has its own
+life cycle. For instance, for a particular gene, the processes which
+transform pre-mRNA to mRNA might take place at a slower rate than the
+transcription of pre-mRNA from DNA. Thus, a gene might have a vastly
+higher expression significance if factoring in pre-mRNA. All this
+depends on the biological question being asked; mine was fairly broad,
+so I think the difference is not too important. However, if I had a more
+targeted question about a particular biological process or cellular
+function, then this difference might matter a lot.
+
+While I was trying to confirm that the reason behind the high level of
+intronic reads, I learned about another potential problem. The tissue
+samples from which RNA was extracted were FFPE slides, which refers to a
+method of long-term preservation. This is relevant because some
+literature suggests there is a statistically significant effect on the
+quality of the RNA sample, which may extend from increases in RNA
+degradation. The authors of "Comparison of whole transcriptome
+sequencing of fresh, frozen, and formalin-fixed, paraffin-embedded
+cardiac tissue" found statistical significant decreases in properly
+assigned reads in samples taken from FFPE tissue compared to fresh and
+even normally-frozen samples. The researchers state that it is possible
+that both the storage conditions and the unique procedure necessary to
+prepare the samples for RNA extraction may lead to degradation of RNA.
+(Jacobsen et al., 2023) Notably, if some samples were extracted from
+FFPE tissue and some were not, this risks introducing batch effects, but
+fortunately this was not the case for series GSE251840. Based on
+post-alignment QC, the RNA degradation in my samples actually seemed
+low, so I am unsure how much this potential problem mattered.
+
+A potential issue touched upon in figure 5 was one which I did not have
+the opportunity to explore further, that being the results of
+infer_experiment.py. This was actually a function I found by myself and
+ran out of curiosity. Given the sequencing platform and the qualitative
+assessments of several samples in IGV, we would expect that all the
+samples would be antisense stranded. The fact that infer_experiment.py
+determined at least several to be sense stranded, and more to be
+ambiguous, could indicate a major problem. The first possibility is that
+the researchers utilized a mixed protocol for reading the samples,
+meaning different sequencing platforms were utilized at different
+points. This would be highly problematic due to the high risk of
+introducing batch effects. The second, slightly less severe potential,
+is that the quality of the alignments in some samples were low to the
+point that the gene regions sampled by infer_experiment.py did not have
+a good coverage to properly identify strand-specificity. Other potential
+influences include DNA contamination and reverse transcription biases.
+The most likely explanation in my opinion is the high amount of
+multimapping reads in some samples. If I could correlate the highest
+multimapping rates to the sense and undetermined strand-specificity
+samples, then this would be a likely explanation. Unfortunately, I
+discovered this late into the project timeline, so I was unable to do
+this. In the end, I do not think it would be a major problem because the
+amount of sense samples were relatively low, and the other QC results
+seemed acceptable. Based on the sample information on GEO, I think it
+would be a reasonable assumption that all samples were antisense, and so
+I proceeded.
+
+A technical challenge I frequently had to deal with while progressing
+with the pipeline was the high runtime. Given that I had sixty-two total
+samples and all my samples were relatively large, with some reaching as
+high as sixty-million read pairs, my runtime was exorbitantly long. This
+was exacerbated by the fact that I did not initially realize SRA could
+download my samples pre-compressed. Compressing my samples took several
+days of runtime. Other processes, such as trim-galore and QoRTs took
+more than thirty-six hours to run on all sixty-two samples. Due to
+mistakes with parameters and changes in procedure, I had to run some of
+these functions several times. In hindsight, I should have excluded the
+Stage II and Stage III samples from the beginning, since I was never
+planning to use them for DGEA or GO term enrichment analysis. However, I
+was curious about how they would affect EDA, and also leaving open the
+window to modify my hypothesis. If I made minor mistakes, this could
+result in heavily lost time. For even higher-throughput projects, I can
+definitely see how managing runtime becomes a major logistical priority.
+
+In regard to potential high-level problems, since this is
+clinically-gathered data, there is a large amount of uncontrolled
+variability inherent to the dataset which is important to keep in mind
+during analysis. Additionally, this data was presumably gathered over an
+extended period of time, one should consider whether efforts were taken
+during tissue sample collection to maintain continuity between samples,
+otherwise batch effects might arise. The researchers state the original
+tissue samples came from a tumor library created and maintained by the
+CHU Biological Research Center, which could potentially be contacted to
+further inquire about sample method connection.
+
+As a more abstract problem, I think my biological question and
+hypothesis are not particularly meaningful. Stage I and stage IV are
+expected to be highly different pathologically, so it is almost a
+trivial exercise to perform EDA on their transcription profiles.
+Examining the LUAD condition from such a high-level nonspecific
+perspective means that a vast amount of genes will be significant. In my
+case, around 9,300. This means that the results themselves will be
+inherently hard to extract any interesting or useful information from.
+This is why the GO term enrichment analysis returned only a few enriched
+terms, which were the most expected results for a condition like as
+LUAD- ie. cell division. Since the point of this project was more-so to
+focus on methodology rather than extracting highly significant results,
+this is not necessarily a problem, but a qualifier for the results and
+their interpretation.
+
+## References
+
+1.  American Lung Association. (2024). State of lung cancer 2024.
+    <https://www.lung.org/getmedia/12020193-7fb3-46b8-8d78-0e5d9cd8f93c/SOLC-2024.pdf>.
+    Frankish, A., Carbonell-Sala, S., Diekhans, M., Jungreis, I.,
+    Loveland, J. E., Mudge, J. M., Sisu, C., Wright, J. C., Arnan, C.,
+    Barnes, I., Banerjee, A., Bennett, R., Berry, A., Bignell, A., Boix,
+    C., Calvet, F., Cerdán-Vélez, D., Cunningham, F., Davidson, C.,
+    Donaldson, S., Dursun, C., Fatima, R., Giorgetti, S., Giron, C. G.,
+    Gonzalez, J. M., Hardy, M., Harrison, P. W., Hourlier, T., Hollis,
+    Z., Hunt, T., James, B., Jiang, Y., Johnson, R., Kay, M., Lagarde,
+    J., Martin, F. J., Gómez, L. M., Nair, S., Ni, P., Pozo, F.,
+    Ramalingam, V., Ruffier, M., Schmitt, B. M., Schreiber, J. M.,
+    Steed, E., Suner, M. M., Sumathipala, D., Sycheva, I.,
+    Uszczynska-Ratajczak, B., Wass, E., Yang, Y. T., Yates, A.,
+    Zafrulla, Z., Choudhary, J. S., Gerstein, M., Guigó, R.,
+    Hubbard, T. J. P., Kellis, M., Kundaje, A., Paten, B., Tress, M. L.,
+    & Flicek, P. (2023). GENCODE: Reference annotation for the human and
+    mouse genomes in 2023. Nucleic Acids Research, 51(d1), D942–D949.
+    <https://doi.org/10.1093/nar/gkac1071>\
+2.  González-Rivas, D., & Fieira, E. (2021). Future perspectives on the
+    TNM staging for lung cancer. Cancers, 13(8), 1940.
+    <https://doi.org/10.3390/cancers13081940>.
+3.  Hurtado, M., Khajavi, L., Essabbar, A., Kammer, M., Xie, T.,
+    Coullomb, A., Pradines, A., Casanova, A., & Pradines, A. (2024).
+    Transcriptomics profiling of the non-small cell lung cancer
+    microenvironment across disease stages reveals dual immune cell-type
+    behaviors. Frontiers in Immunology, 15, 1394965.
+    <https://doi.org/10.3389/fimmu.2024.1394965>.
+4.  Jacobsen, S. B., Tfelt-Hansen, J., Smerup, M. H., Andersen, J. D., &
+    Morling, N. (2023). Comparison of whole transcriptome sequencing of
+    fresh, frozen, and formalin-fixed, paraffin-embedded cardiac tissue.
+    PLoS ONE, 18(3), e0283159.
+    <https://doi.org/10.1371/journal.pone.0283159>.\
+5.  Myers, D. J., & Wallen, J. M. (2023). Lung adenocarcinoma.
+    StatPearls [Internet]. StatPearls Publishing.
+    <https://www.ncbi.nlm.nih.gov/books/NBK519578/>.
+6.  National Center for Biotechnology Information. (2024). SRA Run
+    Selector. BioProject PRJNA1055533. National Library of Medicine.
+    <https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA1055533&o=acc_s%3Aa>.\
+7.  Roche Sequencing Solutions. (n.d.). KAPA RNA HyperPrep Kit with
+    RiboErase (HMR). Roche Sequencing Store.
+    <https://rochesequencingstore.com/catalog/kapa-rna-hyperprep-kit-with-riboerase-hmr/>.
+8.  Wu, F., Fan, J., He, Y., Xiong, A., Yu, J., Li, Y., Zhang, Y., Zhao,
+    W., Zhou, F., Li, W., Zhang, J., Zhang, X., Qiao, M., Gao, G., Chen,
+    S., Chen, X., Li, X., Hou, L., Wu, C., Su, C., Ren, S., Odenthal,
+    M., Buettner, R., Fang, N., & Zhou, C. (2021). Single-cell profiling
+    of tumor heterogeneity and the microenvironment in advanced
+    non-small cell lung cancer. Nature Communications, 12, 2540.
+    <https://doi.org/10.1038/s41467-021-22801-0>
