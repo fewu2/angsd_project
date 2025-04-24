@@ -1,2 +1,5 @@
 # angsd_project
-project_angsd
+
+Author: Franklyn Wu
+
+Bash scripts are located in final_scripts and numbered in general order of usage.
