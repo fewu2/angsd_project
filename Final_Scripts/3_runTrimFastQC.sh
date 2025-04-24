@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --job-name=fastqc-trim
 #SBATCH --time=36:00:00   # HH/MM/SS
-#SBATCH --mem=64G         # memory requested, units available : K,M,G,T
+#SBATCH --mem=48G         # memory requested, units available : K,M,G,T
 
 cd "/athena/angsd/scratch/few4007/angsd-files/project_2"
 input_dir="RawFastqZipped"
